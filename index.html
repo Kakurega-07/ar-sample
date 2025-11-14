@@ -58,24 +58,24 @@
     <a-entity id="fujisan-ar-container" position="0 0 0">
         <a-cone
             id="fuji-body"
-            material="shader: standard; src: #mountain-texture; repeat: 16 16; roughness: 0.9; metalness: 0.05; color: #4B5320;" 
+            material="shader: standard; src: #mountain-texture; repeat: 16 16; roughness: 10; metalness: 0; color: #4B5320;" 
             radius-bottom="25"       radius-top="1"
             height="30"             segments-radial="96"    segments-height="32"    position="0 0 -100"      rotation="0 45 0"       shadow="receive: true; cast: true">
         </a-cone>
         
         <a-sphere
             id="fuji-snowcap"
-            material="shader: standard; color: white; opacity: 0.95; roughness: 0.1; metalness: 0;" 
+            material="shader: standard; color: white; opacity: 1; roughness: 1; metalness: 0;" 
             radius="8"           position="0 29 -100"   segments-width="64"    segments-height="64"   geometry="theta-length: 60;" 
             rotation="0 0 0"
             shadow="receive: true; cast: true">
         </a-sphere>
 
-        <a-text value="MOUNT FUJI" 
+        <a-text value="富士山" 
                 position="0 35 -100" 
                 align="center" 
                 color="#E54C3C" 
-                scale="10 10 10">  </a-text>
+                scale="100 100 100">  </a-text>
 
     </a-entity>
     
@@ -150,7 +150,7 @@ function updatePositions() {
     const direction = bearingToJapanese(bearing); 
     
     // 富士山の3Dモデルを配置するAR空間上の距離をさらに大きく
-    const AR_DISTANCE = 100; // AR空間上で非常に遠くに配置 (メートルの想定)
+    const AR_DISTANCE = 150; // AR空間上で非常に遠くに配置 (メートルの想定)
     const fujiPos = bearingToPosition(bearing, AR_DISTANCE); 
     
     // モデルコンテナの位置を更新し、正しい方角に表示
@@ -182,15 +182,15 @@ function updatePositions() {
     infoDiv.innerHTML = ` 
         🗻 <strong>富士山AR</strong><br> 
         <br> 
-        📍 現在地<br> 
+        現在地<br> 
         　緯度: ${userLat.toFixed(6)}<br> 
         　経度: ${userLon.toFixed(6)}<br> 
         <br> 
-        🎯 富士山<br> 
+        富士山<br> 
         　距離: <strong>${distance.toFixed(1)}km</strong><br> 
         　方角: <strong>${direction}</strong> (${bearing.toFixed(0)}°)<br> 
         <br> 
-        👀 **富士山は${direction}にあります**<br> 
+         **富士山は${direction}にあります**<br> 
         　デバイスを${direction}に向けて探してください！ 
     `; 
 } 

@@ -11,11 +11,11 @@
     position: fixed;
     top: 7px;
     left: 7px;
-    background: rgba(0,0,0,10);
+    background: rgba(0,0,0,0.7); /* 背景を少し不透明にして見やすく */
     color: white;
     padding: 7px;
     font-family: sans-serif;
-    font-size: 7px;
+    font-size: 10px; /* サイズを大きく */
     z-index: 9999;
     border-radius: 5px;
     max-width: 80%;
@@ -42,8 +42,8 @@
     embedded>
     
     <a-assets>
-        <img id="mountain-texture" src="https://drive.google.com/file/d/1h_7rp3nva2qoC6DTTB-uR-zHRPrZEI_k/view?usp=sharing">
-        </a-assets>
+        <a-asset-item id="fujisan-model" src="./fuji.glb"></a-asset-item> 
+    </a-assets>
     
     <a-entity light="type: ambient; color: #FFF; intensity: 0.8"></a-entity>
     <a-entity light="type: directional; color: #FFF; intensity: 0.7; castShadow: true" position="-2 3 1"></a-entity>
@@ -56,26 +56,20 @@
     </a-camera>
     
     <a-entity id="fujisan-ar-container" position="0 0 0">
-        <a-cone
-            id="fuji-body"
-            material="shader: standard; src: #mountain-texture; repeat: 16 16; roughness: 10; metalness: 0; color: #4B5320;" 
-            radius-bottom="25"       radius-top="1"
-            height="30"             segments-radial="96"    segments-height="32"    position="0 0 -100"      rotation="0 45 0"       shadow="receive: true; cast: true">
-        </a-cone>
-        
-        <a-sphere
-            id="fuji-snowcap"
-            material="shader: standard; color: white; opacity: 1; roughness: 1; metalness: 0;" 
-            radius="8"           position="0 29 -100"   segments-width="64"    segments-height="64"   geometry="theta-length: 60;" 
-            rotation="0 0 0"
+        <a-gltf-model
+            id="fujisan-model-viewer"
+            src="#fujisan-model"
+            position="0 0 -100"       
+            rotation="0 45 0"         
+            scale="10 10 10"          
             shadow="receive: true; cast: true">
-        </a-sphere>
+        </a-gltf-model>
 
         <a-text value="富士山" 
-                position="0 35 -100" 
-                align="center" 
-                color="#E54C3C" 
-                scale="100 100 100">  </a-text>
+            position="0 35 -100" 
+            align="center" 
+            color="#E54C3C" 
+            scale="100 100 100"> </a-text>
 
     </a-entity>
     
@@ -84,11 +78,11 @@
 <script>
 const infoDiv = document.getElementById('info');
 const fujisanContainer = document.getElementById('fujisan-ar-container');
-const fujiBody = document.getElementById('fuji-body');
-const fujiSnowcap = document.getElementById('fuji-snowcap');
-const fujiLabel = document.querySelector('a-text[value="MOUNT FUJI"]'); // ラベルも変更
+// 🗻 モデルの参照をa-gltf-modelに変更
+const fujisanModelViewer = document.getElementById('fujisan-model-viewer'); 
+const fujiLabel = document.querySelector('a-text[value="富士山"]'); 
 
-// 富士山の現実の座標
+// 富士山の現実の座標 (変更なし)
 const fujiLat = 35.360556; 
 const fujiLon = 138.727778; 
 
@@ -126,12 +120,12 @@ function bearingToJapanese(bearing) {
 
 function bearingToPosition(bearing, distance) { 
     const rad = toRad(bearing); 
-    const x = Math.sin(rad) * distance;  // 東西方向 
+    const x = Math.sin(rad) * distance; // 東西方向 
     const z = -Math.cos(rad) * distance; // 南北方向（-Zが北） 
     return { x, z }; 
 } 
 
-// --- 富士山とコンパスの位置を更新（ジオロケーションARの肝） ---
+// --- 富士山とコンパスの位置を更新 ---
 function updatePositions() { 
     if (userLat === null || userLon === null) {
         infoDiv.innerHTML = `
@@ -149,33 +143,23 @@ function updatePositions() {
     const distance = calcDistance(userLat, userLon, fujiLat, fujiLon); 
     const direction = bearingToJapanese(bearing); 
     
-    // 富士山の3Dモデルを配置するAR空間上の距離をさらに大きく
-    const AR_DISTANCE = 150; // AR空間上で非常に遠くに配置 (メートルの想定)
+    // AR空間上で非常に遠くに配置
+    const AR_DISTANCE = 150; 
     const fujiPos = bearingToPosition(bearing, AR_DISTANCE); 
     
-    // モデルコンテナの位置を更新し、正しい方角に表示
+    // モデルコンテナの位置を更新
     if (fujisanContainer) {
         fujisanContainer.setAttribute('position', `${fujiPos.x} 0 ${fujiPos.z}`);
         
         // 遠近感を強調するためのスケール調整ロジック
-        // 実際の距離(km)とAR_DISTANCE(m)を基に、適切なスケールを計算
-        // 例: 距離100kmに対してAR_DISTANCE300mで表示されるモデルのサイズを基準とする
-        const baseRealDistanceKm = 90; // この現実距離でのモデルの見え方を基準にする (例: 東京から富士山)
-        const baseARDisplayScale = 3.0; // 基準距離でのARモデルの相対スケール
+        const baseRealDistanceKm = 90; 
         
-        // ユーザーから富士山までの現実の距離 (km) に応じて、AR空間上のモデルの表示サイズを調整
-        // 遠いほど相対的に小さく見えるように。ただし、AR_DISTANCEを大きくしたので、
-        // 近くから見ても十分な大きさに調整する
-        
-        // 例: 10km先にある富士山がAR空間でAR_DISTANCEm先に表示される場合のスケール
-        // これまでのradius/heightはAR空間の相対値なので、AR_DISTANCEに対する比率で調整する
-        // 遠いほど相対的に小さく見せる。近すぎると巨大になるため、最小スケールを設定
         const scaleMultiplier = Math.max(0.01, Math.min(1.5, distance / baseRealDistanceKm)); 
         const finalScale = scaleMultiplier; 
 
-        fujiBody.setAttribute('scale', `${finalScale} ${finalScale} ${finalScale}`);
-        fujiSnowcap.setAttribute('scale', `${finalScale} ${finalScale} ${finalScale}`);
-        fujiLabel.setAttribute('scale', `${finalScale * 3} ${finalScale * 3} ${finalScale * 3}`); // ラベルはさらに大きく
+        // 🗻 GLTFモデルにスケールを適用 (初期値 10 10 10 に合わせて10倍)
+        fujisanModelViewer.setAttribute('scale', `${finalScale * 10} ${finalScale * 10} ${finalScale * 10}`);
+        fujiLabel.setAttribute('scale', `${finalScale * 3} ${finalScale * 3} ${finalScale * 3}`);
     }
     
     // 情報表示を更新
@@ -190,7 +174,7 @@ function updatePositions() {
         　距離: <strong>${distance.toFixed(1)}km</strong><br> 
         　方角: <strong>${direction}</strong> (${bearing.toFixed(0)}°)<br> 
         <br> 
-         **富士山は${direction}にあります**<br> 
+        　**富士山は${direction}にあります**<br> 
         　デバイスを${direction}に向けて探してください！ 
     `; 
 } 

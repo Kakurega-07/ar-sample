@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>富士山AR - プリミティブ再構築版</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+<script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
+<style>
+  #info {
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    background: rgba(0,0,0,0.8);
+    color: white;
+    padding: 15px;
+    font-family: sans-serif;
+    font-size: 14px;
+    z-index: 9999;
+    border-radius: 5px;
+    max-width: 80%;
+  }
+</style>
+</head>
+<body style="margin: 0; overflow: hidden;">
+
+<div id="info">
+  🗻 富士山AR<br>
+  📍 位置情報取得中...
+</div>
+
+<a-scene 
+    id="ar-scene"
+    vr-mode-ui="enabled: false" 
+    renderer="logarithmicDepthBuffer: true"
+    arjs='sourceType: webcam; 
+          sourceWidth:1280; sourceHeight:960; 
+          displayWidth: 1280; displayHeight: 960;
+          debugUIEnabled: false;' 
+    device-orientation-permission-ui 
+    loading-screen="enabled: false"
+    embedded>
+    
+    <a-assets>
+        <img id="mountain-texture" src="https://images.unsplash.com/photo-1549491745-9ec49b25121b?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=600&q=80">
+    </a-assets>
+    
+    <a-entity light="type: ambient; color: #BBB; intensity: 0.8"></a-entity>
+    <a-entity light="type: directional; color: #FFF; intensity: 0.6" position="-0.5 1 1"></a-entity>
+
+    <a-camera 
+        id="camera"
+        look-controls="enabled: true; magicWindowTrackingEnabled: true;"
+        position="0 0 0">
+    </a-camera>
+    
+    <a-entity id="fujisan-ar-container" position="0 0 0">
+        <a-cone
+            id="fuji-body"
+            material="src: #mountain-texture; repeat: 4 4; side: double;" 
+            radius-bottom="4"
+            radius-top="0.1"
+            height="5"
+            segments-radial="32" 
+            segments-height="8"
+            position="0 0 -15" 
+            rotation="0 0 0">
+        </a-cone>
+        
+        <a-sphere
+            id="fuji-snowcap"
+            material="color: white; opacity: 0.9;"
+            radius="1"
+            position="0 4.5 -15"
+            segments-width="16"
+            segments-height="16"
+            geometry="theta-length: 90;" 
+            rotation="0 0 0">
+        </a-sphere>
+
+        <a-text value="FUJI-SAN" 
+                position="0 5.5 -15" 
+                align="center" 
+                color="#E54C3C" 
+                scale="2 2 2">
+        </a-text>
+
+    </a-entity>
+    
+</a-scene>
+
+<script>
+const infoDiv = document.getElementById('info');
+const fujisanContainer = document.getElementById('fujisan-ar-container');
+const fujiBody = document.getElementById('fuji-body');
+const fujiSnowcap = document.getElementById('fuji-snowcap');
+const fujiLabel = document.querySelector('a-text[value="FUJI-SAN"]');
+
+// 富士山の現実の座標
+const fujiLat = 35.360556; 
+const fujiLon = 138.727778; 
+
+let userLat = null; 
+let userLon = null; 
+
+// --- ジオロケーション計算関数 (変更なし) ---
+const R = 6371; // 地球の半径 (km)
+function toRad(degrees) { return degrees * Math.PI / 180; }
+
+function calcDistance(lat1, lon1, lat2, lon2) { 
+    const dLat = toRad(lat2 - lat1); 
+    const dLon = toRad(lon2 - lon1); 
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) + 
+              Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon/2) * Math.sin(dLon/2); 
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
+    return R * c; 
+} 
+
+function calcBearing(lat1, lon1, lat2, lon2) { 
+    const dLon = toRad(lon2 - lon1); 
+    const y = Math.sin(dLon) * Math.cos(toRad(lat2)); 
+    const x = Math.cos(toRad(lat1)) * Math.sin(toRad(lat2)) - 
+              Math.sin(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.cos(dLon); 
+    const bearing = Math.atan2(y, x) * 180 / Math.PI; 
+    return (bearing + 360) % 360; 
+} 
+
+function bearingToJapanese(bearing) { 
+    const directions = ['北', '北北東', '北東', '東北東', '東', '東南東', '南東', '南南東', 
+                        '南', '南南西', '南西', '西南西', '西', '西北西', '北西', '北北西']; 
+    const index = Math.round(bearing / 22.5) % 16; 
+    return directions[index]; 
+} 
+
+function bearingToPosition(bearing, distance) { 
+    const rad = toRad(bearing); 
+    const x = Math.sin(rad) * distance;  // 東西方向 
+    const z = -Math.cos(rad) * distance; // 南北方向（-Zが北） 
+    return { x, z }; 
+} 
+
+// --- 富士山とコンパスの位置を更新（ジオロケーションARの肝） ---
+function updatePositions() { 
+    if (userLat === null || userLon === null) {
+        infoDiv.innerHTML = `
+            🗻 <strong>富士山AR</strong><br>
+            📍 位置情報取得中...<br><br>
+            ⚠️ **位置情報が取得できません。** ブラウザの設定やデバイスのGPSを有効にしてください。
+        `;
+        // モデルを非表示にする
+        fujisanContainer.setAttribute('visible', false);
+        return; 
+    }
+    
+    fujisanContainer.setAttribute('visible', true);
+
+    const bearing = calcBearing(userLat, userLon, fujiLat, fujiLon); 
+    const distance = calcDistance(userLat, userLon, fujiLat, fujiLon); 
+    const direction = bearingToJapanese(bearing); 
+    
+    // 富士山の3Dモデルを配置するAR空間上の距離
+    const AR_DISTANCE = 30; // 遠めに配置 (スケールと調整)
+    const fujiPos = bearingToPosition(bearing, AR_DISTANCE); 
+    
+    // モデルコンテナの位置を更新し、正しい方角に表示
+    if (fujisanContainer) {
+        // Y軸を0に固定し、XとZだけを更新して水平方向に配置
+        fujisanContainer.setAttribute('position', `${fujiPos.x} 0 ${fujiPos.z}`);
+        
+        // モデルのサイズを距離に応じて調整し、遠近感を出す
+        // 例: 距離が遠いほどモデルを大きく見せることで、遠近感を強調
+        const scaleFactor = Math.min(1.0, distance / 100); 
+        fujiBody.setAttribute('scale', `${scaleFactor} ${scaleFactor} ${scaleFactor}`);
+        fujiSnowcap.setAttribute('scale', `${scaleFactor} ${scaleFactor} ${scaleFactor}`);
+        fujiLabel.setAttribute('scale', `${scaleFactor * 2} ${scaleFactor * 2} ${scaleFactor * 2}`);
+        
+    }
+    
+    // 情報表示を更新
+    infoDiv.innerHTML = ` 
+        🗻 <strong>富士山AR</strong><br> 
+        <br> 
+        📍 現在地<br> 
+        　緯度: ${userLat.toFixed(6)}<br> 
+        　経度: ${userLon.toFixed(6)}<br> 
+        <br> 
+        🎯 富士山<br> 
+        　距離: <strong>${distance.toFixed(1)}km</strong><br> 
+        　方角: <strong>${direction}</strong> (${bearing.toFixed(0)}°)<br> 
+        <br> 
+        👀 **富士山は${direction}にあります**<br> 
+        　デバイスを${direction}に向けて探してください！ 
+    `; 
+} 
+
+// --- 位置情報の監視と初期化 (変更なし) ---
+if (navigator.geolocation) { 
+    navigator.geolocation.watchPosition( 
+        (position) => { 
+            userLat = position.coords.latitude; 
+            userLon = position.coords.longitude; 
+            updatePositions(); 
+        }, 
+        (error) => { 
+            // エラーが発生した場合もユーザーに通知
+            const errorMessage = (error.code === 1) ? "位置情報の利用が拒否されました。" : `エラーコード: ${error.code} - ${error.message}`;
+            infoDiv.innerHTML = `❌ 位置情報エラー: ${errorMessage}<br><br>設定から位置情報を許可してください`; 
+            fujisanContainer.setAttribute('visible', false);
+        },
+        { 
+            enableHighAccuracy: true, 
+            maximumAge: 0, 
+            timeout: 5000 
+        } 
+    ); 
+} else {
+    infoDiv.innerHTML = `
+        ❌ ブラウザエラー: Geolocation APIをサポートしていません。
+    `;
+}
+
+document.querySelector('a-scene').addEventListener('loaded', () => { 
+    console.log('✅ AR Scene loaded successfully'); 
+    setTimeout(updatePositions, 1000); 
+}); 
+
+setInterval(updatePositions, 2000); 
+</script> 
+
+</body> 
+</html>

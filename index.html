@@ -2,10 +2,13 @@
 <html>
 <head>
 <meta charset="utf-8">
-<title>富士山AR - プリミティブ再構築版</title>
+<title>富士山AR - ノイズ・グラデーション改善版</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
 <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
+
+<script src="https://raw.githack.com/donmccurdy/aframe-extras/master/src/misc/aframe-extras-misc.js"></script>
+
 <style>
   #info {
     position: fixed;
@@ -42,7 +45,7 @@
     embedded>
     
     <a-assets>
-        <img id="mountain-texture" src="https://images.unsplash.com/photo-1549491745-9ec49b25121b?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=600&q=80">
+        <img id="rock-texture" src="https://cdn.glitch.global/11f0165b-63a2-4a00-ab64-44b20a34891a/rock-texture.jpg?v=1678887467366">
     </a-assets>
     
     <a-entity light="type: ambient; color: #BBB; intensity: 0.8"></a-entity>
@@ -55,46 +58,139 @@
     </a-camera>
     
     <a-entity id="fujisan-ar-container" position="0 0 0">
-        <a-cone
-            id="fuji-body"
-            material="src: #mountain-texture; repeat: 4 4; side: double;" 
-            radius-bottom="4"
-            radius-top="0.1"
-            height="5"
-            segments-radial="32" 
-            segments-height="8"
-            position="0 0 -15" 
-            rotation="0 0 0">
-        </a-cone>
-        
-        <a-sphere
-            id="fuji-snowcap"
-            material="color: white; opacity: 0.9;"
-            radius="1"
-            position="0 4.5 -15"
-            segments-width="16"
-            segments-height="16"
-            geometry="theta-length: 90;" 
-            rotation="0 0 0">
-        </a-sphere>
-
-        <a-text value="FUJI-SAN" 
-                position="0 5.5 -15" 
-                align="center" 
-                color="#E54C3C" 
-                scale="2 2 2">
-        </a-text>
-
+        <a-entity
+            id="fuji-realistic-model"
+            
+            fuji-mountain-generator
+            
+            material="shader: fuji-shader; 
+                      snowColor: #FFFFFF; 
+                      rockColor: #5C4B4B; 
+                      snowHeight: 3.5; 
+                      baseTexture: #rock-texture;
+                      fog: 0.3"
+            
+            position="0 0 -30" rotation="0 0 0"
+            scale="1 1 1">
+            
+            <a-text value="FUJI-SAN" 
+                    position="0 6 0" 
+                    align="center" 
+                    color="#E54C3C" 
+                    scale="5 5 5">
+            </a-text>
+            
+        </a-entity>
     </a-entity>
     
 </a-scene>
 
 <script>
+
+// --- 1. カスタムシェーダー: 高さ(Y軸)に基づいて色をグラデーションさせる ---
+AFRAME.registerShader('fuji-shader', {
+  schema: {
+    snowColor: { type: 'color', is: 'uniform', default: '#FFFFFF' },
+    rockColor: { type: 'color', is: 'uniform', default: '#5C4B4B' },
+    snowHeight: { type: 'number', is: 'uniform', default: 3.5 },
+    baseTexture: { type: 'map', is: 'uniform' },
+    fog: { type: 'number', is: 'uniform', default: 0.1 }
+  },
+  
+  vertexShader: `
+    varying vec3 vWorldPosition;
+    varying vec2 vUv;
+    
+    void main() {
+      vUv = uv;
+      vec4 worldPosition = modelMatrix * vec4( position, 1.0 );
+      vWorldPosition = worldPosition.xyz;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+  `,
+  
+  fragmentShader: `
+    uniform vec3 snowColor;
+    uniform vec3 rockColor;
+    uniform float snowHeight;
+    uniform sampler2D baseTexture;
+    uniform float fog;
+    
+    varying vec3 vWorldPosition;
+    varying vec2 vUv;
+    
+    void main() {
+      // Y座標に基づいてグラデーションを計算 (0.0 から 1.0 のブレンド係数)
+      float blendFactor = smoothstep(snowHeight - 0.5, snowHeight + 0.5, vWorldPosition.y); 
+      
+      // テクスチャをサンプリング
+      vec4 texColor = texture2D(baseTexture, vUv * 4.0); // 4倍繰り返し
+      
+      // 雪の色と岩の色をブレンド
+      // blendFactor=0.0 (低い位置) -> rockColor, blendFactor=1.0 (高い位置) -> snowColor
+      vec3 finalColor = mix(rockColor, snowColor, blendFactor);
+      
+      // 岩の色にテクスチャを混ぜる (雪の部分はテクスチャの影響を小さくする)
+      finalColor = mix(finalColor, texColor.rgb, 0.5 * (1.0 - blendFactor));
+      
+      // 距離に基づくフォグ（遠くのモデルがかすむ効果）
+      float distance = length(vWorldPosition.xyz);
+      float alpha = 1.0 - smoothstep(0.0, fog * 100.0, distance); // 100m先からフォグがかかるように調整
+      
+      gl_FragColor = vec4(finalColor, 1.0);
+    }
+  `
+});
+
+
+// --- 2. カスタムジオメトリ: パーリンノイズで円錐に起伏を生成 ---
+AFRAME.registerComponent('fuji-mountain-generator', {
+  init: function () {
+    const el = this.el;
+    const geometry = new THREE.ConeGeometry( 4, 5, 64, 10 ); // 半径4、高さ5、分割数64x10
+    const noise = new THREE.ImprovedNoise();
+    const noiseScale = 0.5; // ノイズのスケール
+
+    // 各頂点をノイズに基づいてランダムにずらす
+    for (let i = 0; i < geometry.vertices.length; i++) {
+      const vertex = geometry.vertices[i];
+      
+      // 頂点のXYZ座標に基づいてノイズを生成
+      const n = noise.noise(vertex.x * noiseScale, vertex.y * noiseScale, vertex.z * noiseScale);
+      
+      // ノイズを適用 (頂点の法線方向にわずかにずらすことで起伏を作る)
+      // 頂点法線を取得
+      const normal = vertex.clone().normalize();
+      
+      // ノイズの量 (最大0.2mの起伏)
+      const displacement = n * 0.2 * (5 - vertex.y) / 5; // 高さが高いほどノイズを抑える
+      
+      vertex.add(normal.multiplyScalar(displacement));
+    }
+
+    geometry.verticesNeedUpdate = true;
+    geometry.computeFaceNormals();
+    geometry.computeVertexNormals();
+    
+    // 生成したジオメトリをA-Frameエンティティに適用
+    el.setAttribute('geometry', {
+      buffer: true,
+      primitive: 'cone',
+      skipCache: true, // キャッシュをスキップして再生成可能にする
+      'radius-bottom': 4,
+      'radius-top': 0.1,
+      height: 5,
+      segmentsRadial: 64,
+      segmentsHeight: 10
+    });
+    el.object3D.children[0].geometry = geometry;
+  }
+});
+
+
 const infoDiv = document.getElementById('info');
 const fujisanContainer = document.getElementById('fujisan-ar-container');
-const fujiBody = document.getElementById('fuji-body');
-const fujiSnowcap = document.getElementById('fuji-snowcap');
-const fujiLabel = document.querySelector('a-text[value="FUJI-SAN"]');
+const fujiModel = document.getElementById('fuji-realistic-model');
 
 // 富士山の現実の座標
 const fujiLat = 35.360556; 
@@ -103,8 +199,8 @@ const fujiLon = 138.727778;
 let userLat = null; 
 let userLon = null; 
 
-// --- ジオロケーション計算関数 (変更なし) ---
-const R = 6371; // 地球の半径 (km)
+// --- ジオロケーション計算関数 (維持) ---
+const R = 6371; 
 function toRad(degrees) { return degrees * Math.PI / 180; }
 
 function calcDistance(lat1, lon1, lat2, lon2) { 
@@ -134,8 +230,8 @@ function bearingToJapanese(bearing) {
 
 function bearingToPosition(bearing, distance) { 
     const rad = toRad(bearing); 
-    const x = Math.sin(rad) * distance;  // 東西方向 
-    const z = -Math.cos(rad) * distance; // 南北方向（-Zが北） 
+    const x = Math.sin(rad) * distance;  
+    const z = -Math.cos(rad) * distance; 
     return { x, z }; 
 } 
 
@@ -147,7 +243,6 @@ function updatePositions() {
             📍 位置情報取得中...<br><br>
             ⚠️ **位置情報が取得できません。** ブラウザの設定やデバイスのGPSを有効にしてください。
         `;
-        // モデルを非表示にする
         fujisanContainer.setAttribute('visible', false);
         return; 
     }
@@ -158,22 +253,20 @@ function updatePositions() {
     const distance = calcDistance(userLat, userLon, fujiLat, fujiLon); 
     const direction = bearingToJapanese(bearing); 
     
-    // 富士山の3Dモデルを配置するAR空間上の距離
-    const AR_DISTANCE = 30; // 遠めに配置 (スケールと調整)
+    const AR_DISTANCE = 30; // AR空間上のモデル配置距離
     const fujiPos = bearingToPosition(bearing, AR_DISTANCE); 
     
     // モデルコンテナの位置を更新し、正しい方角に表示
     if (fujisanContainer) {
-        // Y軸を0に固定し、XとZだけを更新して水平方向に配置
         fujisanContainer.setAttribute('position', `${fujiPos.x} 0 ${fujiPos.z}`);
         
-        // モデルのサイズを距離に応じて調整し、遠近感を出す
-        // 例: 距離が遠いほどモデルを大きく見せることで、遠近感を強調
-        const scaleFactor = Math.min(1.0, distance / 100); 
-        fujiBody.setAttribute('scale', `${scaleFactor} ${scaleFactor} ${scaleFactor}`);
-        fujiSnowcap.setAttribute('scale', `${scaleFactor} ${scaleFactor} ${scaleFactor}`);
-        fujiLabel.setAttribute('scale', `${scaleFactor * 2} ${scaleFactor * 2} ${scaleFactor * 2}`);
+        // モデルのサイズを距離に応じて調整
+        const scaleFactor = Math.min(1.0, distance / 500); // 500kmで最大スケールになるように調整
+        const minScale = 0.5;
+        const finalScale = Math.max(minScale, scaleFactor);
         
+        // コンテナ内のモデルのスケールを調整
+        fujiModel.setAttribute('scale', `${finalScale} ${finalScale} ${finalScale}`);
     }
     
     // 情報表示を更新
@@ -193,7 +286,7 @@ function updatePositions() {
     `; 
 } 
 
-// --- 位置情報の監視と初期化 (変更なし) ---
+// --- 位置情報の監視と初期化 (維持) ---
 if (navigator.geolocation) { 
     navigator.geolocation.watchPosition( 
         (position) => { 
@@ -202,7 +295,6 @@ if (navigator.geolocation) {
             updatePositions(); 
         }, 
         (error) => { 
-            // エラーが発生した場合もユーザーに通知
             const errorMessage = (error.code === 1) ? "位置情報の利用が拒否されました。" : `エラーコード: ${error.code} - ${error.message}`;
             infoDiv.innerHTML = `❌ 位置情報エラー: ${errorMessage}<br><br>設定から位置情報を許可してください`; 
             fujisanContainer.setAttribute('visible', false);
@@ -214,9 +306,7 @@ if (navigator.geolocation) {
         } 
     ); 
 } else {
-    infoDiv.innerHTML = `
-        ❌ ブラウザエラー: Geolocation APIをサポートしていません。
-    `;
+    infoDiv.innerHTML = `❌ ブラウザエラー: Geolocation APIをサポートしていません。`;
 }
 
 document.querySelector('a-scene').addEventListener('loaded', () => { 

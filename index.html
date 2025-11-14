@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="utf-8">
-<title>富士山AR</title>
+<title>富士山AR - 究極のリアリティ版</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
 <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
@@ -25,8 +25,8 @@
 <body style="margin: 0; overflow: hidden;">
 
 <div id="info">
-   富士山AR<br>
-   位置情報取得中...
+  🗻 富士山AR<br>
+  📍 位置情報取得中...
 </div>
 
 <a-scene 
@@ -42,12 +42,12 @@
     embedded>
     
     <a-assets>
-        <img id="mountain-texture" src="https://cdn.glitch.global/c312fb27-4a00-47e0-945f-c07a3c7a2503/rock_texture.jpg?v=1700000000000">
+        <img id="mountain-texture" src="https://images.unsplash.com/photo-1519681393784-a93986dd2124?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1200&q=80">
         </a-assets>
     
-    <a-entity light="type: ambient; color: #BBB; intensity: 0.9"></a-entity>
-    <a-entity light="type: directional; color: #FFF; intensity: 0.7; castShadow: true" position="-1 2 1"></a-entity>
-    <a-entity light="type: point; color: #ADD8E6; intensity: 0.3; castShadow: false" position="0 5 -10"></a-entity>
+    <a-entity light="type: ambient; color: #FFF; intensity: 0.8"></a-entity>
+    <a-entity light="type: directional; color: #FFF; intensity: 0.7; castShadow: true" position="-2 3 1"></a-entity>
+    <a-entity light="type: point; color: #ADD8E6; intensity: 0.2; castShadow: false" position="0 8 -20"></a-entity>
 
     <a-camera 
         id="camera"
@@ -58,24 +58,24 @@
     <a-entity id="fujisan-ar-container" position="0 0 0">
         <a-cone
             id="fuji-body"
-            material="shader: standard; src: #mountain-texture; repeat: 8 8; roughness: 0.8; metalness: 0.1;" 
-            radius-bottom="8"       radius-top="0.2"
-            height="10"             segments-radial="64"    segments-height="16"    position="0 0 -50"      rotation="0 45 0"       shadow="receive: true; cast: true">
+            material="shader: standard; src: #mountain-texture; repeat: 16 16; roughness: 0.9; metalness: 0.05; color: #4B5320;" 
+            radius-bottom="25"       radius-top="1"
+            height="30"             segments-radial="96"    segments-height="32"    position="0 0 -100"      rotation="0 45 0"       shadow="receive: true; cast: true">
         </a-cone>
         
         <a-sphere
             id="fuji-snowcap"
-            material="shader: standard; color: white; opacity: 0.8; roughness: 0.2; metalness: 0.1;" 
-            radius="2.5"           position="0 9.5 -50"   segments-width="32"    segments-height="32"   geometry="theta-length: 70;" 
+            material="shader: standard; color: white; opacity: 0.95; roughness: 0.1; metalness: 0;" 
+            radius="8"           position="0 29 -100"   segments-width="64"    segments-height="64"   geometry="theta-length: 60;" 
             rotation="0 0 0"
             shadow="receive: true; cast: true">
         </a-sphere>
 
-        <a-text value="FUJI-SAN" 
-                position="0 11 -50" 
+        <a-text value="MOUNT FUJI" 
+                position="0 35 -100" 
                 align="center" 
                 color="#E54C3C" 
-                scale="4 4 4">  </a-text>
+                scale="10 10 10">  </a-text>
 
     </a-entity>
     
@@ -86,7 +86,7 @@ const infoDiv = document.getElementById('info');
 const fujisanContainer = document.getElementById('fujisan-ar-container');
 const fujiBody = document.getElementById('fuji-body');
 const fujiSnowcap = document.getElementById('fuji-snowcap');
-const fujiLabel = document.querySelector('a-text[value="FUJI-SAN"]');
+const fujiLabel = document.querySelector('a-text[value="MOUNT FUJI"]'); // ラベルも変更
 
 // 富士山の現実の座標
 const fujiLat = 35.360556; 
@@ -135,9 +135,9 @@ function bearingToPosition(bearing, distance) {
 function updatePositions() { 
     if (userLat === null || userLon === null) {
         infoDiv.innerHTML = `
-             <strong>富士山AR</strong><br>
-             位置情報取得中...<br><br>
-             **位置情報が取得できません。** ブラウザの設定やデバイスのGPSを有効にしてください。
+            🗻 <strong>富士山AR</strong><br>
+            📍 位置情報取得中...<br><br>
+            ⚠️ **位置情報が取得できません。** ブラウザの設定やデバイスのGPSを有効にしてください。
         `;
         fujisanContainer.setAttribute('visible', false);
         return; 
@@ -149,9 +149,8 @@ function updatePositions() {
     const distance = calcDistance(userLat, userLon, fujiLat, fujiLon); 
     const direction = bearingToJapanese(bearing); 
     
-    // 富士山の3Dモデルを配置するAR空間上の距離
-    // より大きなモデルサイズに合わせて、AR_DISTANCEを大きく調整
-    const AR_DISTANCE = 50; 
+    // 富士山の3Dモデルを配置するAR空間上の距離をさらに大きく
+    const AR_DISTANCE = 300; // AR空間上で非常に遠くに配置 (メートルの想定)
     const fujiPos = bearingToPosition(bearing, AR_DISTANCE); 
     
     // モデルコンテナの位置を更新し、正しい方角に表示
@@ -159,17 +158,29 @@ function updatePositions() {
         fujisanContainer.setAttribute('position', `${fujiPos.x} 0 ${fujiPos.z}`);
         
         // 遠近感を強調するためのスケール調整ロジック
-        // 実際の距離とAR_DISTANCEを基に、モデルが適切に拡大縮小されるように調整
-        // ここでの`distance`は現実の距離(km)、`AR_DISTANCE`はAR空間での表示距離(m)
-        // 調整係数を大きくして、より大きなスケールで遠近感を出す
-        const baseScale = 0.05; // 基準となるモデルの縮尺
-        const scaleMultiplier = Math.min(2.0, distance / 50); // 現実の距離に応じて大きくスケール調整
-        const finalScale = baseScale * scaleMultiplier;
+        // 実際の距離(km)とAR_DISTANCE(m)を基に、適切なスケールを計算
+        // 例: 距離100kmに対してAR_DISTANCE300mで表示されるモデルのサイズを基準とする
+        const baseRealDistanceKm = 100; // この現実距離でのモデルの見え方を基準にする (例: 東京から富士山)
+        const baseARDisplayScale = 1.0; // 基準距離でのARモデルの相対スケール
+        
+        // 現実の距離と基準距離の比率からスケールを調整
+        // AR空間上でのモデルの「実寸」を基準に、遠いほど小さく見えるように
+        // 物理的なスケール調整をモデルのA-Frameプロパティに直接反映
+        // AR_DISTANCEとfujiBodyのheight/radiusを基に計算
+        
+        // ユーザーから富士山までの現実の距離 (km) に応じて、AR空間上のモデルの表示サイズを調整
+        // 遠いほど相対的に小さく見えるように。ただし、AR_DISTANCEを大きくしたので、
+        // 近くから見ても十分な大きさに調整する
+        
+        // 例: 10km先にある富士山がAR空間でAR_DISTANCEm先に表示される場合のスケール
+        // これまでのradius/heightはAR空間の相対値なので、AR_DISTANCEに対する比率で調整する
+        // 遠いほど相対的に小さく見せる。近すぎると巨大になるため、最小スケールを設定
+        const scaleMultiplier = Math.max(0.01, Math.min(1.5, distance / baseRealDistanceKm)); 
+        const finalScale = scaleMultiplier; 
 
         fujiBody.setAttribute('scale', `${finalScale} ${finalScale} ${finalScale}`);
         fujiSnowcap.setAttribute('scale', `${finalScale} ${finalScale} ${finalScale}`);
-        fujiLabel.setAttribute('scale', `${finalScale * 2} ${finalScale * 2} ${finalScale * 2}`); // ラベルはさらに大きく
-
+        fujiLabel.setAttribute('scale', `${finalScale * 3} ${finalScale * 3} ${finalScale * 3}`); // ラベルはさらに大きく
     }
     
     // 情報表示を更新
@@ -210,12 +221,12 @@ if (navigator.geolocation) {
     ); 
 } else {
     infoDiv.innerHTML = `
-       ブラウザエラー: Geolocation APIをサポートしていません。
+        ❌ ブラウザエラー: Geolocation APIをサポートしていません。
     `;
 }
 
 document.querySelector('a-scene').addEventListener('loaded', () => { 
-    console.log('AR Scene loaded successfully'); 
+    console.log('✅ AR Scene loaded successfully'); 
     setTimeout(updatePositions, 1000); 
 }); 
 

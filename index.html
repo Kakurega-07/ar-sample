@@ -9,13 +9,13 @@
 <style>
   #info {
     position: fixed;
-    top: 5px;
-    left: 5px;
+    top: 7px;
+    left: 7px;
     background: rgba(0,0,0,5);
     color: white;
-    padding: 5px;
+    padding: 7px;
     font-family: sans-serif;
-    font-size: 5px;
+    font-size: 7px;
     z-index: 9999;
     border-radius: 5px;
     max-width: 80%;
@@ -42,7 +42,7 @@
     embedded>
     
     <a-assets>
-        <img id="mountain-texture" src="https://images.unsplash.com/photo-1519681393784-a93986dd2124?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1200&q=80">
+        <img id="mountain-texture" src="https://drive.google.com/file/d/1h_7rp3nva2qoC6DTTB-uR-zHRPrZEI_k/view?usp=sharing">
         </a-assets>
     
     <a-entity light="type: ambient; color: #FFF; intensity: 0.8"></a-entity>
@@ -135,9 +135,9 @@ function bearingToPosition(bearing, distance) {
 function updatePositions() { 
     if (userLat === null || userLon === null) {
         infoDiv.innerHTML = `
-            🗻 <strong>富士山AR</strong><br>
-            📍 位置情報取得中...<br><br>
-            ⚠️ **位置情報が取得できません。** ブラウザの設定やデバイスのGPSを有効にしてください。
+             <strong>富士山AR</strong><br>
+             位置情報取得中...<br><br>
+             **位置情報が取得できません。** ブラウザの設定やデバイスのGPSを有効にしてください。
         `;
         fujisanContainer.setAttribute('visible', false);
         return; 
@@ -150,7 +150,7 @@ function updatePositions() {
     const direction = bearingToJapanese(bearing); 
     
     // 富士山の3Dモデルを配置するAR空間上の距離をさらに大きく
-    const AR_DISTANCE = 50; // AR空間上で非常に遠くに配置 (メートルの想定)
+    const AR_DISTANCE = 100; // AR空間上で非常に遠くに配置 (メートルの想定)
     const fujiPos = bearingToPosition(bearing, AR_DISTANCE); 
     
     // モデルコンテナの位置を更新し、正しい方角に表示
@@ -160,13 +160,8 @@ function updatePositions() {
         // 遠近感を強調するためのスケール調整ロジック
         // 実際の距離(km)とAR_DISTANCE(m)を基に、適切なスケールを計算
         // 例: 距離100kmに対してAR_DISTANCE300mで表示されるモデルのサイズを基準とする
-        const baseRealDistanceKm = 100; // この現実距離でのモデルの見え方を基準にする (例: 東京から富士山)
-        const baseARDisplayScale = 2.0; // 基準距離でのARモデルの相対スケール
-        
-        // 現実の距離と基準距離の比率からスケールを調整
-        // AR空間上でのモデルの「実寸」を基準に、遠いほど小さく見えるように
-        // 物理的なスケール調整をモデルのA-Frameプロパティに直接反映
-        // AR_DISTANCEとfujiBodyのheight/radiusを基に計算
+        const baseRealDistanceKm = 90; // この現実距離でのモデルの見え方を基準にする (例: 東京から富士山)
+        const baseARDisplayScale = 3.0; // 基準距離でのARモデルの相対スケール
         
         // ユーザーから富士山までの現実の距離 (km) に応じて、AR空間上のモデルの表示サイズを調整
         // 遠いほど相対的に小さく見えるように。ただし、AR_DISTANCEを大きくしたので、
@@ -210,7 +205,7 @@ if (navigator.geolocation) {
         }, 
         (error) => { 
             const errorMessage = (error.code === 1) ? "位置情報の利用が拒否されました。" : `エラーコード: ${error.code} - ${error.message}`;
-            infoDiv.innerHTML = `❌ 位置情報エラー: ${errorMessage}<br><br>設定から位置情報を許可してください`; 
+            infoDiv.innerHTML = `位置情報エラー: ${errorMessage}<br><br>設定から位置情報を許可してください`; 
             fujisanContainer.setAttribute('visible', false);
         },
         { 
@@ -221,12 +216,12 @@ if (navigator.geolocation) {
     ); 
 } else {
     infoDiv.innerHTML = `
-        ❌ ブラウザエラー: Geolocation APIをサポートしていません。
+        ブラウザエラー: Geolocation APIをサポートしていません。
     `;
 }
 
 document.querySelector('a-scene').addEventListener('loaded', () => { 
-    console.log('✅ AR Scene loaded successfully'); 
+    console.log('AR Scene loaded successfully'); 
     setTimeout(updatePositions, 1000); 
 }); 
 

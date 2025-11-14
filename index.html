@@ -2,20 +2,20 @@
 <html>
 <head>
 <meta charset="utf-8">
-<title>富士山AR - 究極のリアリティ版</title>
+<title>富士山AR</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
 <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
 <style>
   #info {
     position: fixed;
-    top: 10px;
-    left: 10px;
-    background: rgba(0,0,0,0.8);
+    top: 5px;
+    left: 5px;
+    background: rgba(0,0,0,5);
     color: white;
-    padding: 15px;
+    padding: 5px;
     font-family: sans-serif;
-    font-size: 14px;
+    font-size: 5px;
     z-index: 9999;
     border-radius: 5px;
     max-width: 80%;
@@ -25,8 +25,8 @@
 <body style="margin: 0; overflow: hidden;">
 
 <div id="info">
-  🗻 富士山AR<br>
-  📍 位置情報取得中...
+  富士山AR<br>
+  位置情報取得中...
 </div>
 
 <a-scene 
@@ -150,7 +150,7 @@ function updatePositions() {
     const direction = bearingToJapanese(bearing); 
     
     // 富士山の3Dモデルを配置するAR空間上の距離をさらに大きく
-    const AR_DISTANCE = 300; // AR空間上で非常に遠くに配置 (メートルの想定)
+    const AR_DISTANCE = 50; // AR空間上で非常に遠くに配置 (メートルの想定)
     const fujiPos = bearingToPosition(bearing, AR_DISTANCE); 
     
     // モデルコンテナの位置を更新し、正しい方角に表示
@@ -161,7 +161,7 @@ function updatePositions() {
         // 実際の距離(km)とAR_DISTANCE(m)を基に、適切なスケールを計算
         // 例: 距離100kmに対してAR_DISTANCE300mで表示されるモデルのサイズを基準とする
         const baseRealDistanceKm = 100; // この現実距離でのモデルの見え方を基準にする (例: 東京から富士山)
-        const baseARDisplayScale = 1.0; // 基準距離でのARモデルの相対スケール
+        const baseARDisplayScale = 2.0; // 基準距離でのARモデルの相対スケール
         
         // 現実の距離と基準距離の比率からスケールを調整
         // AR空間上でのモデルの「実寸」を基準に、遠いほど小さく見えるように
